@@ -1,122 +1,37 @@
 <!DOCTYPE html>
 <head>
-<style>
-body { font-family: 'Courier New', Courier, monospace; }
-</style>
+<style> body { font-family: 'Courier New', Courier, monospace; } </style>
 </head>
 <body>
-
-<h3>Log</h3>
-<div id="outputLog"></div>
-
-<h3>NFC</h3>
-<button id="readButton">Read</button>
-<button id="writeButton">Write</button>
-<button id="makeReadOnlyButton">Make Read-Only</button>
-
-<h3>Crypto</h3>
-<textarea id="rawTextarea" rows="4" cols="40"></textarea><br />
-<input id="secretInput" type="password" size="20"></input>
+<textarea id="textInput" rows="4" cols="40"></textarea><br />
+<input id="secret" type="password" size="20"></input>
 <button id="hashButton">Hash</button>
 <button id="encryptButton">Encrypt</button>
 <button id="decryptButton">Decrypt</button>
 <p id="hashText"></p>
-
 <script>
 
-function log(text) {
-  const p = document.createElement("p");
-  p.textContent = text;
-  document.getElementById("outputLog").appendChild(p);
-}
-
-if (!("NDEFReader" in window)) {
-  log("Web NFC is not available. Use Chrome on Android.");
-}
-
-/*** DOM objects ***/
-
-const readButton = document.getElementById("readButton");
-const writeButton = document.getElementById("writeButton");
-const makeReadOnlyButton = document.getElementById("makeReadOnlyButton");
-const hashButton = document.getElementById("hashButton");
-const encryptButton = document.getElementById("encryptButton");
-const decryptButton = document.getElementById("decryptButton");
-
-/*** DOM functions ***/
-
-function getRawTextarea() {
-  return document.getElementById("rawTextarea").value;
-}
-
-function setRawTextarea(text) {
-  document.getElementById("rawTextarea").value = text;
-}
-
-function setHashText(text) {
-  document.getElementById("hashText").textContent = text;
-}
-
-/*** Helper functions ***/
-
-// convert ArrayBuffer to hex string
 function toHexString(arrayBuffer) {
-  return Array.from(new Uint8Array(arrayBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(arrayBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// convert hex string to Uint8Array
-function toU8Array(hexString) {
-  const array = [];
+function toUint8Array(hexString) {
+  const nums = [];
   for (let i=0; i < hexString.length; i+=2) {
-    array.push(parseInt(hexString.slice(i, i+2), 16));
+    nums.push(parseInt(hexString.slice(i, i+2), 16));
   }
-  return new Uint8Array(array);
+  return new Uint8Array(nums);
 }
 
 async function getKey() {
-  const encoded = new TextEncoder().encode(document.getElementById("secretInput").value);
+  const encoded = new TextEncoder().encode(document.getElementById("secret").value);
   const rawKey = await crypto.subtle.digest("SHA-256", encoded);
   return await crypto.subtle.importKey("raw", rawKey, "AES-CTR", false, ["encrypt", "decrypt"]);
 }
 
-/*** NFC functions ***/
-
-readButton.addEventListener("click", async () => {
-  if (!("NDEFReader" in window)) return;
-
-  const ndef = new NDEFReader();
-  await ndef.scan();
-
-  ndef.addEventListener("readingerror", () => log("Error: unable to read data."));
-
-  ndef.addEventListener("reading", ({ message, serialNumber }) => {
-    log(`> Read success from ${serialNumber}`);
-    // log(`> Records: (${message.records.length})`);
-    // TODO write message to textarea
-  });
-});
-
-writeButton.addEventListener("click", async () => {
-  if (!("NDEFReader" in window)) return;
-
-  const ndef = new NDEFReader();
-  await ndef.write(getRawTextarea())
-  log("> Write success");
-});
-
-makeReadOnlyButton.addEventListener("click", async () => {
-  if (!("NDEFReader" in window)) return;
-
-  const ndef = new NDEFReader();
-  await ndef.makeReadOnly();
-  log("> Make read-only success");
-});
-
-/*** Cypher functions ***/
-
-encryptButton.addEventListener("click", async () => {
+document.getElementById("encryptButton").addEventListener("click", async () => {
   const counter = crypto.getRandomValues(new Uint8Array(16));
-  const encoded = new TextEncoder().encode(getRawTextarea());
+  const encoded = new TextEncoder().encode(document.getElementById("textInput").value);
 
   const key = await getKey();
   const _ciphertext = await crypto.subtle.encrypt(
@@ -133,11 +48,12 @@ encryptButton.addEventListener("click", async () => {
   const combined = new Uint8Array(counter.byteLength + ciphertext.byteLength);
   combined.set(counter, 0);
   combined.set(ciphertext, counter.byteLength);
-  setRawTextarea(toHexString(combined.buffer))
+
+  document.getElementById("textInput").value = toHexString(combined.buffer);
 });
 
-decryptButton.addEventListener("click", async () => {
-  const combined = toU8Array(getRawTextarea());
+document.getElementById("decryptButton").addEventListener("click", async () => {
+  const combined = toUint8Array(document.getElementById("textInput").value);
   const counter = combined.subarray(0, 16);
   const ciphertext = combined.subarray(16);
 
@@ -151,13 +67,14 @@ decryptButton.addEventListener("click", async () => {
     key,
     ciphertext
   );
-  setRawTextarea(new TextDecoder().decode(encoded));
+
+  document.getElementById("textInput").value = new TextDecoder().decode(encoded);
 });
 
-hashButton.addEventListener("click", async () => {
-  const msgUint8 = new TextEncoder().encode(getRawTextarea());
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
-  setHashText(toHexString(hashBuffer));
+document.getElementById("hashButton").addEventListener("click", async () => {
+  const encoded = new TextEncoder().encode(document.getElementById("textInput").value);
+  const hash = await crypto.subtle.digest("SHA-256", encoded);
+  document.getElementById("hashText").textContent = toHexString(hash);
 });
 
 </script>

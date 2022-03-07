@@ -1,13 +1,6 @@
-# near-field-crypto
+Encrypt and decrypt some text using the web native [crypto library](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto).
 
-### Features
-
-* Encrypt/decrypt some text using a passphrase
-* Read/write to an nfc tag
-
-### Code References
-
-* https://googlechrome.github.io/samples/web-nfc/
-* https://web.dev/nfc/
-* https://developer.mozilla.org/en-US/docs/Web/API/Web_NFC_API
-* https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto
+```
+shasum -a 256 index.html
+7b0ea7a6f3e6460d5f4fc89b91fac5ac77d8c70d6f7eba8c8249819a37431633
+```
